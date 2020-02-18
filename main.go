@@ -9,29 +9,32 @@ import (
 	"runtime"
 )
 
+const (
+	defaultEditor        = "vi"
+	defaultEditorWindows = "notepad"
+)
+
 func main() {
+	editor := defaultEditor
+	if runtime.GOOS == "windows" {
+		editor = defaultEditorWindows
+	}
+	// todo check if spaces won't mess this up with command execution
+	if os.Getenv("EDITOR") != "" {
+		editor = os.Getenv("EDITOR")
+	}
+
 	dir := os.TempDir()
 	path := filepath.Join(dir, "test12345.txt")
-	defer os.Remove(path)
-
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	err := ioutil.WriteFile(path, []byte("hello\n"), 0600)
 	if err != nil {
 		panic(err)
 	}
-	f.Write([]byte("hello\n"))
-	// close here immediately, otherwise the subsequent execution won't succeed as the file is already open.
-	f.Close()
+	defer os.Remove(path)
 
-	// todo: file on windows with correct file type association, see "ftype" and "assoc" commands
-	args := []string{}
-	if runtime.GOOS == "windows" {
-		args = append(args, "cmd", "/C")
-	} else {
-		args = append(args, "edit")
-	}
-	args = append(args, path)
-
-	cmd := exec.Command(args[0], args[1:]...)
+	// todo: on Windows, use file association to figure out what to open the file with
+	// using "start", "ftype" and "assoc"
+	cmd := exec.Command(editor, path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -46,5 +49,7 @@ func main() {
 		panic(err)
 	}
 
+	fmt.Println()
+	fmt.Println("Contents:")
 	fmt.Printf("%s\n", data)
 }
