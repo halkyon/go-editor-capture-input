@@ -11,11 +11,16 @@ import (
 type Editor struct {
 	content  []byte
 	filename string
-	shell    string
-	editor   string
 }
 
 func New(content []byte, filename string) *Editor {
+	return &Editor{
+		content:  content,
+		filename: filename,
+	}
+}
+
+func (e *Editor) Run() ([]byte, error) {
 	shell := defaultShell
 	if os.Getenv("SHELL") != "" {
 		shell = os.Getenv("SHELL")
@@ -25,35 +30,14 @@ func New(content []byte, filename string) *Editor {
 		editor = os.Getenv("EDITOR")
 	}
 
-	return &Editor{
-		content:  content,
-		filename: filename,
-		shell:    shell,
-		editor:   editor,
-	}
-}
-
-func (e *Editor) openFile() (*os.File, error) {
-	if e.filename != "" {
-		return os.OpenFile(filepath.Join(os.TempDir(), e.filename), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
-	} else {
-		return ioutil.TempFile(os.TempDir(), "*")
-	}
-}
-
-func (e *Editor) Run() ([]byte, error) {
-	file, err := e.openFile()
+	path := filepath.Join(os.TempDir(), e.filename)
+	err := ioutil.WriteFile(path, e.content, 0600)
 	if err != nil {
 		return nil, err
 	}
-	defer os.Remove(file.Name())
+	defer os.Remove(path)
 
-	_, err = file.Write(e.content)
-	if err != nil {
-		return nil, err
-	}
-
-	args := []string{e.shell, shellCommandFlag, fmt.Sprintf("%s %s", e.editor, file.Name())}
+	args := []string{shell, shellCommandFlag, fmt.Sprintf("%s %s", editor, path)}
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -63,7 +47,7 @@ func (e *Editor) Run() ([]byte, error) {
 		return nil, err
 	}
 
-	content, err := ioutil.ReadFile(file.Name())
+	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
