@@ -12,5 +12,5 @@ does this with the `kubectl edit` command, for example.
 
 `$ go-open-with-editor`
 
-This will create a temporary file `test12345.txt` in your system temp path.
-
+This will create a temporary file `test12345.txt` in your system temp path. Setting the filename
+argument to a blank string uses a randomly generated filename instead.
